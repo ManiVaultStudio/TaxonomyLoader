@@ -38,8 +38,6 @@ set(PLUGIN_SOURCES
     src/TaxonomyLoaderPlugin.h
     src/TaxonomyLoaderPlugin.cpp
     src/TaxonomyLoaderPlugin.json
-    src/Taxonomy.h
-    src/Taxonomy.cpp
     src/json.hpp
 )
 
@@ -56,7 +54,7 @@ add_library(${PROJECT_NAME} SHARED ${PLUGIN_SOURCES})
 # -----------------------------------------------------------------------------
 # Include ManiVault headers, including system data plugins
 #target_include_directories(${PROJECT_NAME} PRIVATE "${ManiVault_INCLUDE_DIR}")
-target_include_directories(${PROJECT_NAME} PRIVATE "D:/Work/ManiVault/Install/$<CONFIGURATION>/include")
+target_include_directories(${PROJECT_NAME} PRIVATE "${ManiVault_INSTALL_DIR}/$<CONFIGURATION>/include")
 target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src)
 #target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/thirdparty/Eigen/include)
 
@@ -82,14 +80,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::OpenGLWidgets)
 
 # Link to ManiVault and data plugins
 #target_link_libraries(${PROJECT_NAME} PRIVATE ManiVault::Core)
-#target_link_libraries(${PROJECT_NAME} PRIVATE ManiVault::PointData)
 target_link_libraries(${PROJECT_NAME} PRIVATE "D:/Work/ManiVault/Install/$<CONFIGURATION>/lib/MV_Public.lib")
-target_link_libraries(${PROJECT_NAME} PRIVATE "D:/Work/ManiVault/Install/$<CONFIGURATION>/lib/PointData.lib")
 
-find_package(OpenMP)
-if(OpenMP_CXX_FOUND)
-    target_link_libraries(${PROJECT_NAME} PRIVATE OpenMP::OpenMP_CXX)
-endif()
+set(MV_LINK_PATH "${ManiVault_INSTALL_DIR}/$<CONFIGURATION>/lib")
+set(PLUGIN_LINK_PATH "${ManiVault_INSTALL_DIR}/$<CONFIGURATION>/$<IF:$<CXX_COMPILER_ID:MSVC>,lib,Plugins>")
+set(MV_LINK_SUFFIX $<IF:$<CXX_COMPILER_ID:MSVC>,${CMAKE_LINK_LIBRARY_SUFFIX},${CMAKE_SHARED_LIBRARY_SUFFIX}>)
+set(CAS_TAXONOMY_DATA_LINK_LIBRARY "${PLUGIN_LINK_PATH}/${CMAKE_SHARED_LIBRARY_PREFIX}CasTaxonomyData${MV_LINK_SUFFIX}")
+target_link_libraries(${PROJECT_NAME} PRIVATE "${CAS_TAXONOMY_DATA_LINK_LIBRARY}")
 
 # -----------------------------------------------------------------------------
 # Target installation

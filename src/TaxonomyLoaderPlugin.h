@@ -2,10 +2,6 @@
 
 #include <LoaderPlugin.h>
 
-#include <PointData/PointData.h>
-#include <ClusterData/ClusterData.h>
-#include <TextData/TextData.h>
-
 #include <Task.h>
 
 using namespace mv::plugin;
