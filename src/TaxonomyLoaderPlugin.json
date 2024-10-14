@@ -1,0 +1,6 @@
+{
+    "name" : "Taxonomy Loader",
+    "menuName" : "JSON (.json)",
+    "version" : "1.0",
+    "dependencies" : ["CAS Taxonomy Data"]
+}
