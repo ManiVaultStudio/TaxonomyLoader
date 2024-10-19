@@ -41,6 +41,8 @@ set(PLUGIN_SOURCES
     src/TaxonomyLoaderPlugin.json
     src/H5adLoader.h
     src/H5adLoader.cpp
+    src/LeadFile.h
+    src/LeadFile.cpp
     src/json.hpp
 )
 
@@ -86,6 +88,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::OpenGLWidgets)
 target_link_libraries(${PROJECT_NAME} PRIVATE ManiVault::Core)
 target_link_libraries(${PROJECT_NAME} PRIVATE ManiVault::PointData)
 target_link_libraries(${PROJECT_NAME} PRIVATE ManiVault::ClusterData)
+target_link_libraries(${PROJECT_NAME} PRIVATE ManiVault::TextData)
 
 set(MV_LINK_PATH "${ManiVault_INSTALL_DIR}/$<CONFIGURATION>/lib")
 set(PLUGIN_LINK_PATH "${ManiVault_INSTALL_DIR}/$<CONFIGURATION>/$<IF:$<CXX_COMPILER_ID:MSVC>,lib,Plugins>")

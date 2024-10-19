@@ -159,20 +159,20 @@ void TaxonomyLoaderPlugin::loadData()
 
     // Load H5ad
     H5adLoader h5adLoader;
-    std::string taxonomyStr;
-    h5adLoader.LoadTaxonomy(fileName, taxonomyStr);
+    //std::string taxonomyStr;
+    //h5adLoader.LoadTaxonomy(fileName, taxonomyStr);
     h5adLoader.LoadFile(fileName);
 
-    // Load taxonomy
-    qDebug() << "Reading taxonomy annotations from file..";
-    //std::ifstream file(fileName.toStdString());
-    json jsondata = json::parse(taxonomyStr);
+    //// Load taxonomy
+    //qDebug() << "Reading taxonomy annotations from file..";
+    ////std::ifstream file(fileName.toStdString());
+    //json jsondata = json::parse(taxonomyStr);
 
-    mv::Dataset<CasTaxonomy> taxonomyData = mv::data().createDataset("CAS Taxonomy Data", "Taxonomy");
-    Taxonomy& taxonomy = taxonomyData->getTaxonomy();
-    traverseTaxonomy(taxonomy, jsondata);
+    //mv::Dataset<CasTaxonomy> taxonomyData = mv::data().createDataset("CAS Taxonomy Data", "Taxonomy");
+    //Taxonomy& taxonomy = taxonomyData->getTaxonomy();
+    //traverseTaxonomy(taxonomy, jsondata);
 
-    taxonomy.print();
+    //taxonomy.print();
 }
 
 QIcon TaxonomyLoaderPluginFactory::getIcon(const QColor& color /*= Qt::black*/) const
