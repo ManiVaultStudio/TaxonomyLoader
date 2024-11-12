@@ -3,6 +3,7 @@
 #include "H5Cpp.h"
 
 #include <PointData/PointData.h>
+#include <ClusterData/ClusterData.h>
 #include <TextData/TextData.h>
 
 #include <iostream>
@@ -11,6 +12,26 @@ using namespace H5;
 
 namespace
 {
+    bool endsWith(const std::string& fullString, const std::string& ending) {
+        if (fullString.length() >= ending.length()) {
+            return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));
+        }
+        else {
+            return false;
+        }
+    }
+
+    std::string replaceAfterLastSlash(const std::string& fullString, const std::string& replacement) {
+        size_t lastSlashPos = fullString.find_last_of('/');
+
+        if (lastSlashPos != std::string::npos) {
+            return fullString.substr(0, lastSlashPos + 1) + replacement;
+        }
+        else {
+            return fullString;  // If no slash is found, return the original string.
+        }
+    }
+
     void attr_op(H5::H5Location& loc, const std::string attr_name,
         void* operator_data) {
         std::cout << attr_name << std::endl;
@@ -265,6 +286,107 @@ void H5adLoader::LoadFile(QString fileName)
 
         if (dataset.GetName() == "X" || QString::fromStdString(dataset.GetName()).startsWith("X/"))
         {
+            continue;
+        }
+
+        if (endsWith(dataset.GetName(), "codes") && lf.DatasetExists(replaceAfterLastSlash(dataset.GetName(), "categories")))
+            continue;
+        if (endsWith(dataset.GetName(), "categories") && lf.DatasetExists(replaceAfterLastSlash(dataset.GetName(), "codes")))
+        {
+            // Categorical dataset
+
+            // Categories part
+            hid_t datasetId = H5Dopen(lf.GetFileId(), dataset.GetName().c_str(), H5P_DEFAULT);
+
+            hid_t datatype_id = H5Dget_type(datasetId);
+            if (H5Tis_variable_str(datatype_id) <= 0) {
+                std::cerr << "Dataset is not variable-length string." << std::endl;
+            }
+
+            // Step 4: Get the dataspace and number of elements
+            hid_t dataspace_id = H5Dget_space(datasetId);
+            hssize_t num_elements = H5Sget_simple_extent_npoints(dataspace_id);
+
+            // Step 5: Allocate memory to hold the string data (array of C-strings)
+            char** rdata = (char**)malloc(num_elements * sizeof(char*));
+
+            // Step 6: Read the dataset into rdata (HDF5 handles memory allocation for variable-length strings)
+            herr_t status = H5Dread(datasetId, datatype_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdata);
+            if (status < 0) {
+                std::cerr << "Failed to read dataset." << std::endl;
+                free(rdata);
+            }
+
+            // Step 7: Convert the C-style strings to std::vector<std::string>
+            std::vector<QString> string_vector;
+            string_vector.reserve(num_elements);
+            for (hssize_t i = 0; i < num_elements; ++i) {
+                string_vector.push_back(QString::fromStdString(std::string(rdata[i])));
+            }
+            std::cout << "STRING VECTOR: " << string_vector.size() << std::endl;
+            // Step 8: Clean up the dynamically allocated strings and free the memory
+            for (hssize_t i = 0; i < num_elements; ++i) {
+                free(rdata[i]);  // Free each individual string
+            }
+            free(rdata);  // Free the array of strings
+
+            if (string_vector.size() > 0)
+            {
+                std::cout << string_vector[0].toStdString() << std::endl;
+                std::cout << string_vector[string_vector.size() - 1].toStdString() << std::endl;
+            }
+
+            H5Dclose(datasetId);
+
+            // Codes part
+            std::string datasetCodesName = replaceAfterLastSlash(dataset.GetName(), "codes");
+            datasetId = H5Dopen(lf.GetFileId(), datasetCodesName.c_str(), H5P_DEFAULT);
+
+            // Step 4: Get the dataspace and number of elements
+            dataspace_id = H5Dget_space(datasetId);
+            num_elements = H5Sget_simple_extent_npoints(dataspace_id);
+
+            // Step 5: Allocate a vector to hold the integer data
+            std::vector<int> int_vector(num_elements);
+
+            // Step 6: Read the dataset directly into the std::vector<int>
+            status = H5Dread(datasetId, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, int_vector.data());
+            if (status < 0) {
+                return;
+            }
+            std::cout << "INT VECTOR: " << int_vector.size() << std::endl;
+
+            if (int_vector.size() > 0)
+            {
+                std::cout << "First int data: " << int_vector[0] << std::endl;
+                std::cout << "Last int data: " << int_vector[int_vector.size() - 1] << std::endl;
+            }
+
+            H5Dclose(datasetId);
+
+            mv::Dataset<Clusters> clustersData = mv::data().createDataset<Clusters>("Cluster", QString::fromStdString(replaceAfterLastSlash(dataset.GetName(), "")));
+
+            for (int i = 0; i < string_vector.size(); i++)
+            {
+                const QString& clusterName = string_vector[i];
+
+                Cluster cluster;
+                std::vector<unsigned int> indices;
+                for (int c = 0; c < int_vector.size(); c++)
+                {
+                    if (int_vector[c] == i)
+                        indices.push_back(c);
+                }
+                cluster.setName(clusterName);
+                cluster.setIndices(indices);
+                
+                clustersData->addCluster(cluster);
+            }
+
+            Cluster::colorizeClusters(clustersData->getClusters());
+
+            mv::events().notifyDatasetDataChanged(clustersData);
+
             continue;
         }
 
