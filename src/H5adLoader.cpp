@@ -207,7 +207,7 @@ void H5adLoader::LoadX()
             std::vector<float> denseMatrix;
             csr_to_dense_1d(data, indices, indptr, denseMatrix, num_elements2 - 1, 16984);
 
-            X->setData(denseMatrix, 16984);
+            X->setData(std::move(denseMatrix), 16984);
 
             mv::events().notifyDatasetDataChanged(X);
         }
