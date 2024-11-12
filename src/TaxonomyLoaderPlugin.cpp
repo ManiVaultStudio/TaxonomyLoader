@@ -149,30 +149,38 @@ void TaxonomyLoaderPlugin::init()
 
 void TaxonomyLoaderPlugin::loadData()
 {
-    //Q_INIT_RESOURCE(met_loader_resources);
+    try
+    {
+        //Q_INIT_RESOURCE(met_loader_resources);
 
-    const QString fileName = AskForFileName(tr("H5ad Files (*.h5ad)"));
+        const QString fileName = AskForFileName(tr("H5ad Files (*.h5ad)"));
 
-    // Don't try to load a file if the dialog was cancelled or the file name is empty
-    if (fileName.isNull() || fileName.isEmpty())
-        return;
+        // Don't try to load a file if the dialog was cancelled or the file name is empty
+        if (fileName.isNull() || fileName.isEmpty())
+            return;
 
-    // Load H5ad
-    H5adLoader h5adLoader;
-    //std::string taxonomyStr;
-    //h5adLoader.LoadTaxonomy(fileName, taxonomyStr);
-    h5adLoader.LoadFile(fileName);
+        // Load H5ad
+        H5adLoader h5adLoader;
+        std::string taxonomyStr;
+        h5adLoader.LoadFile(fileName);
 
-    //// Load taxonomy
-    //qDebug() << "Reading taxonomy annotations from file..";
-    ////std::ifstream file(fileName.toStdString());
-    //json jsondata = json::parse(taxonomyStr);
+        //h5adLoader.LoadTaxonomy(fileName, taxonomyStr);
 
-    //mv::Dataset<CasTaxonomy> taxonomyData = mv::data().createDataset("CAS Taxonomy Data", "Taxonomy");
-    //Taxonomy& taxonomy = taxonomyData->getTaxonomy();
-    //traverseTaxonomy(taxonomy, jsondata);
+        //// Load taxonomy
+        //qDebug() << "Reading taxonomy annotations from file..";
+        ////std::ifstream file(fileName.toStdString());
+        //json jsondata = json::parse(taxonomyStr);
 
-    //taxonomy.print();
+        //mv::Dataset<CasTaxonomy> taxonomyData = mv::data().createDataset("CAS Taxonomy Data", "Taxonomy");
+        //Taxonomy& taxonomy = taxonomyData->getTaxonomy();
+        //traverseTaxonomy(taxonomy, jsondata);
+
+        //taxonomy.print();
+    }
+    catch (std::exception& e)
+    {
+        std::cerr << "Loading of taxonomy file has failed for unknown reasons." << std::endl;
+    }
 }
 
 QIcon TaxonomyLoaderPluginFactory::getIcon(const QColor& color /*= Qt::black*/) const
