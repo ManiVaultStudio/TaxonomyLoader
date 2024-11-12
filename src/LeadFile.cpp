@@ -272,49 +272,6 @@ namespace LEAD
         }
 
         free(rdata);
-
-        //hid_t datasetId = H5Dopen(GetFileId(), datasetPath.c_str(), H5P_DEFAULT);
-
-        //hid_t datatype_id = H5Dget_type(datasetId);
-        //if (H5Tis_variable_str(datatype_id) <= 0) {
-        //    std::cerr << "Dataset is not variable-length string." << std::endl;
-        //}
-
-        //// Step 4: Get the dataspace and number of elements
-        //hid_t dataspace_id = H5Dget_space(datasetId);
-        //hssize_t numElements = H5Sget_simple_extent_npoints(dataspace_id);
-
-        //// Step 5: Allocate memory to hold the string data (array of C-strings)
-        //char** rdata = (char**)malloc(numElements * sizeof(char*));
-
-        //// Step 6: Read the dataset into rdata (HDF5 handles memory allocation for variable-length strings)
-        //herr_t status = H5Dread(datasetId, datatype_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdata);
-        //if (status < 0) {
-        //    std::cerr << "Failed to read dataset." << std::endl;
-        //    free(rdata);
-        //}
-
-        //// Convert rdata to std::vector<StringType>
-        //stringVector.reserve(numElements);
-        //for (hssize_t i = 0; i < numElements; ++i)
-        //{
-        //    stringVector = StringType(rdata[i]);
-        //    //string_vector.push_back(QString::fromStdString(std::string(rdata[i])));
-        //}
-        //std::cout << "STRING VECTOR: " << stringVector.size() << std::endl;
-        //// Step 8: Clean up the dynamically allocated strings and free the memory
-        //for (hssize_t i = 0; i < numElements; ++i) {
-        //    free(rdata[i]);  // Free each individual string
-        //}
-        //free(rdata);  // Free the array of strings
-
-        //if (stringVector.size() > 0)
-        //{
-        //    //std::cout << stringVector[0] << std::endl;
-        //    //std::cout << stringVector[stringVector.size() - 1] << std::endl;
-        //}
-
-        //H5Dclose(datasetId);
     }
 
     void File::OpenIntegerDataset(std::string datasetPath, std::vector<int>& intVector)
@@ -338,6 +295,7 @@ namespace LEAD
             dataspace.getSimpleExtentDims(dims.data(), nullptr);
 
             // Allocate a vector to hold the integer data
+            // FIXME: Here assuming the data has only one dimension AND that ndims was larger than 0!
             intVector.resize(dims[0]);
 
             // Read the data into the buffer
@@ -350,16 +308,16 @@ namespace LEAD
             }
         }
         catch (H5::FileIException& e) {
-            std::cerr << "File error: " << e.getDetailMsg() << std::endl;
+            std::cerr << "HDF5 File error: " << e.getDetailMsg() << std::endl;
         }
         catch (H5::DataSetIException& e) {
-            std::cerr << "Dataset error: " << e.getDetailMsg() << std::endl;
+            std::cerr << "HDF5 Dataset error: " << e.getDetailMsg() << std::endl;
         }
         catch (H5::DataSpaceIException& e) {
-            std::cerr << "Dataspace error: " << e.getDetailMsg() << std::endl;
+            std::cerr << "HDF5 Dataspace error: " << e.getDetailMsg() << std::endl;
         }
         catch (H5::Exception& e) {
-            std::cerr << "General HDF5 error: " << e.getDetailMsg() << std::endl;
+            std::cerr << "HDF5 General error: " << e.getDetailMsg() << std::endl;
         }
 
         std::cout << "INT VECTOR: " << intVector.size() << std::endl;
