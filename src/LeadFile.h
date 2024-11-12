@@ -80,12 +80,18 @@ namespace LEAD
     public:
         void Open(std::string fileName);
 
+        void OpenStringDataset(std::string datasetPath, std::vector<std::string>& stringVector);
+
         hid_t GetFileId();
 
+        bool DatasetExists(std::string datasetPath);
         bool IsXSparse();
 
         std::vector<Dataset> GetDatasets();
         TreeNode GetLinkTree();
+
+    private:
+        bool IsFileOpened() { return _isOpen; }
 
     private:
         H5::H5File*     _file;

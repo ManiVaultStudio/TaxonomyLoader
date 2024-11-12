@@ -231,32 +231,120 @@ namespace LEAD
         _isOpen = true;
     }
 
+    void File::OpenStringDataset(std::string datasetPath, std::vector<std::string>& stringData)
+    {
+        if (!IsFileOpened())
+            throw ("Attemption to open string dataset " + datasetPath + " while file is not opened.");
+
+        // Open the dataset
+        H5::DataSet dataset = _file->openDataSet(datasetPath);
+        
+        // Get the datatype of the dataset (expecting strings)
+        H5::StrType datatype = dataset.getStrType();
+
+        if (H5Tis_variable_str(datatype.getId()) <= 0) {
+            std::cerr << "Dataset is not variable-length string." << std::endl;
+            return;
+        }
+
+        // Get the dataspace of the dataset (its dimensions)
+        H5::DataSpace dataspace = dataset.getSpace();
+
+        // Get the number of elements in the dataset
+        hsize_t numElements = dataspace.getSimpleExtentNpoints();
+
+        //// Prepare to read the data into a vector of std::string
+        //stringData.resize(numElements);
+
+        // Define memory space to read the data
+        H5::DataSpace memspace(1, &numElements);
+
+        char** rdata = (char**)malloc(numElements * sizeof(char*));
+
+        // Read the dataset into rdata (HDF5 handles memory allocation for variable-length strings)
+        //dataset.read(rdata, datatype, memspace, dataspace);
+        herr_t status = H5Dread(dataset.getId(), datatype.getId(), H5S_ALL, H5S_ALL, H5P_DEFAULT, rdata);
+
+        // Convert the C-style strings to std::vector<std::string>
+        stringData.reserve(numElements);
+        for (hssize_t i = 0; i < numElements; ++i) {
+            stringData.push_back(std::string(rdata[i]));
+        }
+
+        free(rdata);
+
+        //hid_t datasetId = H5Dopen(GetFileId(), datasetPath.c_str(), H5P_DEFAULT);
+
+        //hid_t datatype_id = H5Dget_type(datasetId);
+        //if (H5Tis_variable_str(datatype_id) <= 0) {
+        //    std::cerr << "Dataset is not variable-length string." << std::endl;
+        //}
+
+        //// Step 4: Get the dataspace and number of elements
+        //hid_t dataspace_id = H5Dget_space(datasetId);
+        //hssize_t numElements = H5Sget_simple_extent_npoints(dataspace_id);
+
+        //// Step 5: Allocate memory to hold the string data (array of C-strings)
+        //char** rdata = (char**)malloc(numElements * sizeof(char*));
+
+        //// Step 6: Read the dataset into rdata (HDF5 handles memory allocation for variable-length strings)
+        //herr_t status = H5Dread(datasetId, datatype_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdata);
+        //if (status < 0) {
+        //    std::cerr << "Failed to read dataset." << std::endl;
+        //    free(rdata);
+        //}
+
+        //// Convert rdata to std::vector<StringType>
+        //stringVector.reserve(numElements);
+        //for (hssize_t i = 0; i < numElements; ++i)
+        //{
+        //    stringVector = StringType(rdata[i]);
+        //    //string_vector.push_back(QString::fromStdString(std::string(rdata[i])));
+        //}
+        //std::cout << "STRING VECTOR: " << stringVector.size() << std::endl;
+        //// Step 8: Clean up the dynamically allocated strings and free the memory
+        //for (hssize_t i = 0; i < numElements; ++i) {
+        //    free(rdata[i]);  // Free each individual string
+        //}
+        //free(rdata);  // Free the array of strings
+
+        //if (stringVector.size() > 0)
+        //{
+        //    //std::cout << stringVector[0] << std::endl;
+        //    //std::cout << stringVector[stringVector.size() - 1] << std::endl;
+        //}
+
+        //H5Dclose(datasetId);
+    }
+
     hid_t File::GetFileId()
     {
         return _file->getId();
     }
 
-    bool File::IsXSparse()
+    bool File::DatasetExists(std::string datasetPath)
     {
         H5E_BEGIN_TRY
         {
-            // Try to open "X/indices" and "X/indptr" datasets
-            htri_t indicesExists = H5Lexists(_file->getId(), "/X/indices", H5P_DEFAULT);
-            htri_t indptrExists = H5Lexists(_file->getId(), "/X/indptr", H5P_DEFAULT);
-
-            if (indicesExists >= 0 && indptrExists >= 0)
-            {
-                // Both datasets exist, so the matrix is stored in sparse format
-                std::cout << "Sparse dataset X found." << std::endl;
-                return true;
-            }
-            else {
-                // If we can't open both datasets, it's likely dense
-                std::cout << "Dense dataset X found." << std::endl;
-                return false;
-            }
+            return H5Lexists(_file->getId(), datasetPath.c_str(), H5P_DEFAULT) > 0;
         }
         H5E_END_TRY;
+    }
+
+    bool File::IsXSparse()
+    {
+        // Check if both the "X/indices" and "X/indptr" datasets exist, if so X is sparse
+        if (DatasetExists("/X/indices") && DatasetExists("/X/indptr"))
+        {
+            // Both datasets exist, so the matrix is stored in sparse format
+            std::cout << "Sparse dataset X found." << std::endl;
+            return true;
+        }
+        else {
+            // If we can't open both datasets, it's likely dense
+            std::cout << "Dense dataset X found." << std::endl;
+            return false;
+        }
     }
 
     std::vector<Dataset> File::GetDatasets()
