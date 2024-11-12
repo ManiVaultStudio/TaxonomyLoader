@@ -476,50 +476,27 @@ void H5adLoader::LoadFile(QString fileName)
         {
             std::cout << " is of type STRING.";
 
-            hid_t datasetId = H5Dopen(lf.GetFileId(), dataset.GetName().c_str(), H5P_DEFAULT);
+            std::vector<std::string> stringData;
+            lf.OpenStringDataset(dataset.GetName(), stringData);
 
-            hid_t datatype_id = H5Dget_type(datasetId);
-            if (H5Tis_variable_str(datatype_id) <= 0) {
-                std::cerr << "Dataset is not variable-length string." << std::endl;
+            // Convert the std::strings to QStrings
+            std::vector<QString> qStringData;
+            qStringData.reserve(stringData.size());
+            for (hssize_t i = 0; i < stringData.size(); ++i) {
+                qStringData.push_back(QString::fromStdString(stringData[i]));
             }
 
-            // Step 4: Get the dataspace and number of elements
-            hid_t dataspace_id = H5Dget_space(datasetId);
-            hssize_t num_elements = H5Sget_simple_extent_npoints(dataspace_id);
-
-            // Step 5: Allocate memory to hold the string data (array of C-strings)
-            char** rdata = (char**)malloc(num_elements * sizeof(char*));
-
-            // Step 6: Read the dataset into rdata (HDF5 handles memory allocation for variable-length strings)
-            herr_t status = H5Dread(datasetId, datatype_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdata);
-            if (status < 0) {
-                std::cerr << "Failed to read dataset." << std::endl;
-                free(rdata);
-            }
-
-            // Step 7: Convert the C-style strings to std::vector<std::string>
-            std::vector<QString> string_vector;
-            string_vector.reserve(num_elements);
-            for (hssize_t i = 0; i < num_elements; ++i) {
-                string_vector.push_back(QString::fromStdString(std::string(rdata[i])));
-            }
-            std::cout << "STRING VECTOR: " << string_vector.size() << std::endl;
-            // Step 8: Clean up the dynamically allocated strings and free the memory
-            for (hssize_t i = 0; i < num_elements; ++i) {
-                free(rdata[i]);  // Free each individual string
-            }
-            free(rdata);  // Free the array of strings
-            
-            if (string_vector.size() > 0)
+            if (qStringData.size() > 0)
             {
-                std::cout << string_vector[0].toStdString() << std::endl;
-                std::cout << string_vector[string_vector.size()-1].toStdString() << std::endl;
+                std::cout << qStringData[0].toStdString() << std::endl;
+                std::cout << qStringData[qStringData.size()-1].toStdString() << std::endl;
             }
-
-            H5Dclose(datasetId);
 
             mv::Dataset<Text> textData = mv::data().createDataset<Text>("Text", QString::fromStdString(dataset.GetName()));
-            textData->addColumn("test", string_vector);
+
+            textData->addColumn("test", qStringData);
+            mv::events().notifyDatasetDataChanged(textData);
+
             break;
         }
         case H5T_COMPOUND:
