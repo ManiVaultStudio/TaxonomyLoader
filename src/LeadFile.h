@@ -81,6 +81,7 @@ namespace LEAD
         void Open(std::string fileName);
 
         void OpenStringDataset(std::string datasetPath, std::vector<std::string>& stringVector);
+        void OpenIntegerDataset(std::string datasetPath, std::vector<int>& intVector);
 
         hid_t GetFileId();
 

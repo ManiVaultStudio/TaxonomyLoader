@@ -234,7 +234,7 @@ namespace LEAD
     void File::OpenStringDataset(std::string datasetPath, std::vector<std::string>& stringData)
     {
         if (!IsFileOpened())
-            throw ("Attemption to open string dataset " + datasetPath + " while file is not opened.");
+            throw ("Attempt to open string dataset " + datasetPath + " while file is not opened.");
 
         // Open the dataset
         H5::DataSet dataset = _file->openDataSet(datasetPath);
@@ -315,6 +315,54 @@ namespace LEAD
         //}
 
         //H5Dclose(datasetId);
+    }
+
+    void File::OpenIntegerDataset(std::string datasetPath, std::vector<int>& intVector)
+    {
+        if (!IsFileOpened())
+            throw ("Attempt to open integer dataset " + datasetPath + " while file is not opened.");
+
+        try
+        {
+            // Open the dataset
+            H5::DataSet dataset = _file->openDataSet(datasetPath);
+
+            // Get the dataspace of the dataset to determine its size
+            H5::DataSpace dataspace = dataset.getSpace();
+
+            // Get the number of dimensions
+            int ndims = dataspace.getSimpleExtentNdims();
+
+            // Get the size of each dimension
+            std::vector<hsize_t> dims(ndims);
+            dataspace.getSimpleExtentDims(dims.data(), nullptr);
+
+            // Allocate a vector to hold the integer data
+            intVector.resize(dims[0]);
+
+            // Read the data into the buffer
+            dataset.read(intVector.data(), H5::PredType::NATIVE_INT);
+
+            if (intVector.size() > 0)
+            {
+                std::cout << "First int data: " << intVector[0] << std::endl;
+                std::cout << "Last int data: " << intVector[intVector.size() - 1] << std::endl;
+            }
+        }
+        catch (H5::FileIException& e) {
+            std::cerr << "File error: " << e.getDetailMsg() << std::endl;
+        }
+        catch (H5::DataSetIException& e) {
+            std::cerr << "Dataset error: " << e.getDetailMsg() << std::endl;
+        }
+        catch (H5::DataSpaceIException& e) {
+            std::cerr << "Dataspace error: " << e.getDetailMsg() << std::endl;
+        }
+        catch (H5::Exception& e) {
+            std::cerr << "General HDF5 error: " << e.getDetailMsg() << std::endl;
+        }
+
+        std::cout << "INT VECTOR: " << intVector.size() << std::endl;
     }
 
     hid_t File::GetFileId()

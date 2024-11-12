@@ -396,35 +396,11 @@ void H5adLoader::LoadFile(QString fileName)
         {
             std::cout << " is of type INTEGER.";
 
-
-            hid_t datasetId = H5Dopen(lf.GetFileId(), dataset.GetName().c_str(), H5P_DEFAULT);
-
-            // Step 4: Get the dataspace and number of elements
-            hid_t dataspace_id = H5Dget_space(datasetId);
-            hssize_t num_elements = H5Sget_simple_extent_npoints(dataspace_id);
-
-            // Step 5: Allocate a vector to hold the integer data
-            std::vector<int> int_vector(num_elements);
-
-            // Step 6: Read the dataset directly into the std::vector<int>
-            herr_t status = H5Dread(datasetId, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, int_vector.data());
-            if (status < 0) {
-                return;
-            }
-            std::cout << "INT VECTOR: " << int_vector.size() << std::endl;
-
-            if (int_vector.size() > 0)
-            {
-                std::cout << "First int data: " << int_vector[0] << std::endl;
-                std::cout << "Last int data: " << int_vector[int_vector.size() - 1] << std::endl;
-            }
-
-            H5Dclose(datasetId);
+            std::vector<int> intVector;
+            lf.OpenIntegerDataset(dataset.GetName(), intVector);
 
             mv::Dataset<Points> pointData = mv::data().createDataset<Points>("Points", QString::fromStdString(dataset.GetName()));
-
-            pointData->setData(int_vector, 1);
-
+            pointData->setData(intVector, 1);
             mv::events().notifyDatasetDataChanged(pointData);
 
             break;
