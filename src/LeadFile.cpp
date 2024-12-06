@@ -274,10 +274,21 @@ namespace LEAD
         free(rdata);
     }
 
-    void File::OpenIntegerDataset(std::string datasetPath, std::vector<int>& intVector)
+    void File::OpenIntegerDataset(std::string datasetPath, std::vector<int>& intVector, std::vector<hsize_t>& dims)
+    {
+        ReadNumericDataset<int>(datasetPath, H5::PredType::NATIVE_INT, intVector, dims);
+    }
+
+    void File::OpenFloatDataset(std::string datasetPath, std::vector<float>& floatVector, std::vector<hsize_t>& dims)
+    {
+        ReadNumericDataset<float>(datasetPath, H5::PredType::NATIVE_FLOAT, floatVector, dims);
+    }
+
+    template <class DataType>
+    void File::ReadNumericDataset(std::string datasetPath, const H5::PredType& dataType, std::vector<DataType>& outVector, std::vector<hsize_t>& dims)
     {
         if (!IsFileOpened())
-            throw ("Attempt to open integer dataset " + datasetPath + " while file is not opened.");
+            throw ("Attempt to open float dataset " + datasetPath + " while file is not opened.");
 
         try
         {
@@ -291,20 +302,26 @@ namespace LEAD
             int ndims = dataspace.getSimpleExtentNdims();
 
             // Get the size of each dimension
-            std::vector<hsize_t> dims(ndims);
+            dims.resize(ndims);
             dataspace.getSimpleExtentDims(dims.data(), nullptr);
 
+            // Calculate the total number of elements
+            hsize_t totalElements = 1;
+            for (hsize_t dim : dims)
+            {
+                totalElements *= dim;
+            }
+
             // Allocate a vector to hold the integer data
-            // FIXME: Here assuming the data has only one dimension AND that ndims was larger than 0!
-            intVector.resize(dims[0]);
+            outVector.resize(totalElements);
 
             // Read the data into the buffer
-            dataset.read(intVector.data(), H5::PredType::NATIVE_INT);
+            dataset.read(outVector.data(), dataType);
 
-            if (intVector.size() > 0)
+            if (outVector.size() > 0)
             {
-                std::cout << "First int data: " << intVector[0] << std::endl;
-                std::cout << "Last int data: " << intVector[intVector.size() - 1] << std::endl;
+                std::cout << "First data: " << outVector[0] << std::endl;
+                std::cout << "Last data: " << outVector[outVector.size() - 1] << std::endl;
             }
         }
         catch (H5::FileIException& e) {
@@ -320,7 +337,7 @@ namespace LEAD
             std::cerr << "HDF5 General error: " << e.getDetailMsg() << std::endl;
         }
 
-        std::cout << "INT VECTOR: " << intVector.size() << std::endl;
+        std::cout << "OUT VECTOR: " << outVector.size() << std::endl;
     }
 
     hid_t File::GetFileId()

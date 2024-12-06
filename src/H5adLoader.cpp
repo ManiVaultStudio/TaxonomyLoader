@@ -202,7 +202,7 @@ void H5adLoader::LoadX()
                 throw "Failed to read X indptr dataset";
             }
             std::cout << "Post read4: " << num_elements2 << std::endl;
-            mv::Dataset<Points> X = mv::data().createDataset<Points>("Points", QString::fromStdString("X"));
+            X = mv::data().createDataset<Points>("Points", QString::fromStdString("X"));
 
             std::vector<float> denseMatrix;
             csr_to_dense_1d(data, indices, indptr, denseMatrix, num_elements2 - 1, 16984);
@@ -255,7 +255,7 @@ void H5adLoader::LoadX()
                 throw "Failed to read X dataset";
             }
 
-            mv::Dataset<Points> X = mv::data().createDataset<Points>("Points", QString::fromStdString("X"));
+            X = mv::data().createDataset<Points>("Points", QString::fromStdString("X"));
 
             X->setData(data, numCols);
 
@@ -364,7 +364,7 @@ void H5adLoader::LoadFile(QString fileName)
 
             H5Dclose(datasetId);
 
-            mv::Dataset<Clusters> clustersData = mv::data().createDataset<Clusters>("Cluster", QString::fromStdString(replaceAfterLastSlash(dataset.GetName(), "")));
+            mv::Dataset<Clusters> clustersData = mv::data().createDataset<Clusters>("Cluster", QString::fromStdString(replaceAfterLastSlash(dataset.GetName(), "")), X);
 
             for (int i = 0; i < string_vector.size(); i++)
             {
@@ -397,10 +397,11 @@ void H5adLoader::LoadFile(QString fileName)
             std::cout << " is of type INTEGER.";
 
             std::vector<int> intVector;
-            lf.OpenIntegerDataset(dataset.GetName(), intVector);
+            std::vector<hsize_t> dims;
+            lf.OpenIntegerDataset(dataset.GetName(), intVector, dims);
 
-            mv::Dataset<Points> pointData = mv::data().createDataset<Points>("Points", QString::fromStdString(dataset.GetName()));
-            pointData->setData(intVector, 1);
+            mv::Dataset<Points> pointData = mv::data().createDerivedDataset<Points>(QString::fromStdString(dataset.GetName()), X);
+            pointData->setData(intVector, dims.size());
             mv::events().notifyDatasetDataChanged(pointData);
 
             break;
@@ -409,42 +410,47 @@ void H5adLoader::LoadFile(QString fileName)
         {
             std::cout << " is of type FLOAT.";
 
+            std::vector<float> floatVector;
+            std::vector<hsize_t> dims;
+            lf.OpenFloatDataset(dataset.GetName(), floatVector, dims);
+            
+            mv::Dataset<Points> pointData = mv::data().createDerivedDataset<Points>(QString::fromStdString(dataset.GetName()), X);
+            pointData->setData(floatVector, dims.size());
+            mv::events().notifyDatasetDataChanged(pointData);
 
-            hid_t datasetId = H5Dopen(lf.GetFileId(), dataset.GetName().c_str(), H5P_DEFAULT);
+            //hid_t datasetId = H5Dopen(lf.GetFileId(), dataset.GetName().c_str(), H5P_DEFAULT);
 
-            // Step 3: Get the dataspace of the dataset
-            hid_t dataspace_id = H5Dget_space(datasetId);
+            //// Step 3: Get the dataspace of the dataset
+            //hid_t dataspace_id = H5Dget_space(datasetId);
 
-            // Step 4: Get the number of dimensions and their sizes
-            int rank = H5Sget_simple_extent_ndims(dataspace_id);  // Get the number of dimensions
-            if (rank == 1)
-            {
-                // Sparse data?
-            }
-            else if (rank == 2)
-            {
-            }
-            else
-            {
-                std::cerr << "Expected a 2D dataset but got " << rank << "D." << std::endl;
-                H5Sclose(dataspace_id);
-                H5Dclose(datasetId);
-                return;
-            }
+            //// Step 4: Get the number of dimensions and their sizes
+            //int rank = H5Sget_simple_extent_ndims(dataspace_id);  // Get the number of dimensions
+            //if (rank == 1)
+            //{
+            //    // Sparse data?
+            //}
+            //else if (rank == 2)
+            //{
+            //}
+            //else
+            //{
+            //    std::cerr << "Expected a 2D dataset but got " << rank << "D." << std::endl;
+            //    H5Sclose(dataspace_id);
+            //    H5Dclose(datasetId);
+            //    return;
+            //}
 
-            // Step 5: Get the dimensions (rows and columns)
-            hsize_t dims[2];  // Array to hold the sizes of each dimension
-            H5Sget_simple_extent_dims(dataspace_id, dims, NULL);
+            //// Step 5: Get the dimensions (rows and columns)
+            //hsize_t dims[2];  // Array to hold the sizes of each dimension
+            //H5Sget_simple_extent_dims(dataspace_id, dims, NULL);
 
-            // dims[0] is the number of rows, dims[1] is the number of columns
-            hsize_t num_rows = dims[0];
-            hsize_t num_cols = rank == 2 ? dims[1] : 1;
+            //// dims[0] is the number of rows, dims[1] is the number of columns
+            //hsize_t num_rows = dims[0];
+            //hsize_t num_cols = rank == 2 ? dims[1] : 1;
 
-            // Step 6: Print the number of rows and columns
-            std::cout << "Number of rows: " << num_rows << std::endl;
-            std::cout << "Number of columns: " << num_cols << std::endl;
-
-            mv::data().createDataset<Points>("Points", QString::fromStdString(dataset.GetName()));
+            //// Step 6: Print the number of rows and columns
+            //std::cout << "Number of rows: " << num_rows << std::endl;
+            //std::cout << "Number of columns: " << num_cols << std::endl;
 
             break;
         }
@@ -468,7 +474,7 @@ void H5adLoader::LoadFile(QString fileName)
                 std::cout << qStringData[qStringData.size()-1].toStdString() << std::endl;
             }
 
-            mv::Dataset<Text> textData = mv::data().createDataset<Text>("Text", QString::fromStdString(dataset.GetName()));
+            mv::Dataset<Text> textData = mv::data().createDataset<Text>("Text", QString::fromStdString(dataset.GetName()), X);
 
             textData->addColumn("test", qStringData);
             mv::events().notifyDatasetDataChanged(textData);

@@ -2,6 +2,8 @@
 
 #include "LeadFile.h"
 
+#include <PointData/PointData.h>
+
 #include <string>
 
 #include <QString>
@@ -15,4 +17,6 @@ public:
 
 private:
     LEAD::File lf;
+
+    mv::Dataset<Points> X;
 };

@@ -81,7 +81,8 @@ namespace LEAD
         void Open(std::string fileName);
 
         void OpenStringDataset(std::string datasetPath, std::vector<std::string>& stringVector);
-        void OpenIntegerDataset(std::string datasetPath, std::vector<int>& intVector);
+        void OpenIntegerDataset(std::string datasetPath, std::vector<int>& intVector, std::vector<hsize_t>& dims);
+        void OpenFloatDataset(std::string datasetPath, std::vector<float>& floatVector, std::vector<hsize_t>& dims);
 
         hid_t GetFileId();
 
@@ -93,6 +94,9 @@ namespace LEAD
 
     private:
         bool IsFileOpened() { return _isOpen; }
+
+        template <class DataType>
+        void ReadNumericDataset(std::string datasetPath, const H5::PredType& dataType, std::vector<DataType>& outVector, std::vector<hsize_t>& dims);
 
     private:
         H5::H5File*     _file;

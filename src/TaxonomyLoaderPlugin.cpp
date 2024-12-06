@@ -25,6 +25,17 @@ namespace
         return QString::fromStdString(element.get<std::string>());
     }
 
+    QMap<QString, QString> jsonToMap(const json& element)
+    {
+        std::map<std::string, std::string> stdMap = element.get<std::map<std::string, std::string>>();
+
+        QMap<QString, QString> qMap;
+        for (const auto& pair : stdMap) {
+            qMap.insert(QString::fromStdString(pair.first), QString::fromStdString(pair.second));
+        }
+        return qMap;
+    }
+
     bool contains(const json& element, const char* attr)
     {
         return element.find(attr) != element.end();
@@ -50,6 +61,7 @@ namespace
         if (contains(element, "rationale")) annotation.rationale = jsonToString(element["rationale"]);
         if (contains(element, "cell_set_accession")) annotation.cell_set_accession = jsonToString(element["cell_set_accession"]);
         if (contains(element, "parent_cell_set_accession")) annotation.parent_cell_set_accession = jsonToString(element["parent_cell_set_accession"]);
+        if (contains(element, "author_annotation_fields")) annotation.author_annotation_fields = jsonToMap(element["author_annotation_fields"]);
 
         if (contains(element, "cell_ids"))
         {
@@ -162,20 +174,21 @@ void TaxonomyLoaderPlugin::loadData()
         // Load H5ad
         H5adLoader h5adLoader;
         std::string taxonomyStr;
-        h5adLoader.LoadFile(fileName);
 
-        //h5adLoader.LoadTaxonomy(fileName, taxonomyStr);
+        h5adLoader.LoadTaxonomy(fileName, taxonomyStr);
 
         //// Load taxonomy
-        //qDebug() << "Reading taxonomy annotations from file..";
-        ////std::ifstream file(fileName.toStdString());
-        //json jsondata = json::parse(taxonomyStr);
+        qDebug() << "Reading taxonomy annotations from file..";
+        //std::ifstream file(fileName.toStdString());
+        json jsondata = json::parse(taxonomyStr);
 
-        //mv::Dataset<CasTaxonomy> taxonomyData = mv::data().createDataset("CAS Taxonomy Data", "Taxonomy");
-        //Taxonomy& taxonomy = taxonomyData->getTaxonomy();
-        //traverseTaxonomy(taxonomy, jsondata);
+        mv::Dataset<CasTaxonomy> taxonomyData = mv::data().createDataset("CAS Taxonomy Data", "Taxonomy");
+        Taxonomy& taxonomy = taxonomyData->getTaxonomy();
+        traverseTaxonomy(taxonomy, jsondata);
 
         //taxonomy.print();
+
+        h5adLoader.LoadFile(fileName);
     }
     catch (std::exception& e)
     {
