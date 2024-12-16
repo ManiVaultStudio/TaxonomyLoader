@@ -150,6 +150,7 @@ void H5adLoader::LoadX()
     std::cout << "LoadX" << std::endl;
     if (lf.IsXSparse())
     {
+        hid_t Xdataset = H5Gopen(lf.GetFileId(), "X", H5P_DEFAULT);
         hid_t XdatasetId = H5Dopen(lf.GetFileId(), "X/data", H5P_DEFAULT);
         hid_t XIndicesDatasetId = H5Dopen(lf.GetFileId(), "X/indices", H5P_DEFAULT);
         hid_t XIndptrDatasetId = H5Dopen(lf.GetFileId(), "X/indptr", H5P_DEFAULT);
@@ -158,10 +159,36 @@ void H5adLoader::LoadX()
 
         try
         {
-            if (XdatasetId < 0 || XIndicesDatasetId < 0 || XIndptrDatasetId < 0)
-                throw "Sparse dataset does not exist or failed to open.";
+            if (Xdataset < 0 || XdatasetId < 0 || XIndicesDatasetId < 0 || XIndptrDatasetId < 0)
+            {
+                throw std::runtime_error("Expected sparse dataset, but it failed to open or does not exist.");
+            }
 
             std::cout << "Sparse dataset opened successfully." << std::endl;
+
+            ///
+            hsize_t dims[1];  // Assuming the 'shape' attribute is a 1D array
+            int shape[2];     // Array to store the two integers (rows and columns)
+                // Open the group 'X'
+            hid_t group_id = H5Gopen(lf.GetFileId(), "X", H5P_DEFAULT);
+
+            // Open the attribute 'shape'
+            hid_t attr_id = H5Aopen(group_id, "shape", H5P_DEFAULT);
+
+            // Get the attribute dataspace and check the number of elements
+            hid_t attr_space = H5Aget_space(attr_id);
+            H5Sget_simple_extent_dims(attr_space, dims, NULL);
+
+            // Ensure the attribute has the correct number of elements
+            if (dims[0] == 2) {
+                // Read the attribute
+                H5Aread(attr_id, H5T_NATIVE_INT, shape);
+                printf("Shape: rows=%d, columns=%d\n", shape[0], shape[1]);
+            }
+            else {
+                throw std::runtime_error("Expected X.shape attribute to be 2-dimensional, but it isn't");
+            }
+            ///
 
             hid_t dataspaceIdX = H5Dget_space(XdatasetId);
             int rank = H5Sget_simple_extent_ndims(dataspaceIdX);
@@ -169,14 +196,14 @@ void H5adLoader::LoadX()
             {
                 throw "Expected a 1D dataset but got " + std::to_string(rank) + "D.";
             }
-
-            hsize_t dims[1];  // Array to hold the sizes of each dimension
-            H5Sget_simple_extent_dims(dataspaceIdX, dims, NULL);
             
-            hsize_t numRows = dims[0];
-            std::cout << "Number of rows: " << numRows << std::endl;
+            hsize_t datadim[1];  // Array to hold the sizes of each dimension
+            H5Sget_simple_extent_dims(dataspaceIdX, datadim, NULL);
+            
+            hsize_t numData = datadim[0];
+            std::cout << "Number of rows: " << numData << std::endl;
 
-            std::vector<float> data(numRows);
+            std::vector<float> data(numData);
             status = H5Dread(XdatasetId, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, data.data());
             if (status < 0) {
                 throw "Failed to read X dataset";
@@ -205,9 +232,9 @@ void H5adLoader::LoadX()
             X = mv::data().createDataset<Points>("Points", QString::fromStdString("X"));
 
             std::vector<float> denseMatrix;
-            csr_to_dense_1d(data, indices, indptr, denseMatrix, num_elements2 - 1, 16984);
+            csr_to_dense_1d(data, indices, indptr, denseMatrix, shape[0], shape[1]);
 
-            X->setData(std::move(denseMatrix), 16984);
+            X->setData(std::move(denseMatrix), shape[1]);
 
             mv::events().notifyDatasetDataChanged(X);
         }
@@ -296,44 +323,29 @@ void H5adLoader::LoadFile(QString fileName)
             // Categorical dataset
 
             // Categories part
+            std::vector<QString> qStringData;
+
             hid_t datasetId = H5Dopen(lf.GetFileId(), dataset.GetName().c_str(), H5P_DEFAULT);
 
-            hid_t datatype_id = H5Dget_type(datasetId);
-            if (H5Tis_variable_str(datatype_id) <= 0) {
-                std::cerr << "Dataset is not variable-length string." << std::endl;
-            }
-
-            // Step 4: Get the dataspace and number of elements
-            hid_t dataspace_id = H5Dget_space(datasetId);
-            hssize_t num_elements = H5Sget_simple_extent_npoints(dataspace_id);
-
-            // Step 5: Allocate memory to hold the string data (array of C-strings)
-            char** rdata = (char**)malloc(num_elements * sizeof(char*));
-
-            // Step 6: Read the dataset into rdata (HDF5 handles memory allocation for variable-length strings)
-            herr_t status = H5Dread(datasetId, datatype_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdata);
-            if (status < 0) {
-                std::cerr << "Failed to read dataset." << std::endl;
-                free(rdata);
-            }
-
-            // Step 7: Convert the C-style strings to std::vector<std::string>
-            std::vector<QString> string_vector;
-            string_vector.reserve(num_elements);
-            for (hssize_t i = 0; i < num_elements; ++i) {
-                string_vector.push_back(QString::fromStdString(std::string(rdata[i])));
-            }
-            std::cout << "STRING VECTOR: " << string_vector.size() << std::endl;
-            // Step 8: Clean up the dynamically allocated strings and free the memory
-            for (hssize_t i = 0; i < num_elements; ++i) {
-                free(rdata[i]);  // Free each individual string
-            }
-            free(rdata);  // Free the array of strings
-
-            if (string_vector.size() > 0)
+            hid_t datatype_id = H5Dget_type(datasetId); 
+            if (H5Tis_variable_str(datatype_id))
             {
-                std::cout << string_vector[0].toStdString() << std::endl;
-                std::cout << string_vector[string_vector.size() - 1].toStdString() << std::endl;
+                std::vector<std::string> stringData;
+                lf.OpenStringDataset(dataset.GetName().c_str(), stringData);
+                if (stringData.size() > 0)
+                {
+                    std::cout << stringData[0] << std::endl;
+                    std::cout << stringData[stringData.size() - 1] << std::endl;
+                }
+
+                // Convert the std::strings to QStrings
+                qStringData.reserve(stringData.size());
+                for (hssize_t i = 0; i < stringData.size(); ++i) {
+                    qStringData.push_back(QString::fromStdString(stringData[i]));
+                }
+            }
+            else {
+                std::cerr << "Dataset is not variable-length string." << std::endl;
             }
 
             H5Dclose(datasetId);
@@ -343,14 +355,14 @@ void H5adLoader::LoadFile(QString fileName)
             datasetId = H5Dopen(lf.GetFileId(), datasetCodesName.c_str(), H5P_DEFAULT);
 
             // Step 4: Get the dataspace and number of elements
-            dataspace_id = H5Dget_space(datasetId);
-            num_elements = H5Sget_simple_extent_npoints(dataspace_id);
+            hid_t dataspace_id = H5Dget_space(datasetId);
+            hssize_t num_elements = H5Sget_simple_extent_npoints(dataspace_id);
 
             // Step 5: Allocate a vector to hold the integer data
             std::vector<int> int_vector(num_elements);
 
             // Step 6: Read the dataset directly into the std::vector<int>
-            status = H5Dread(datasetId, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, int_vector.data());
+            herr_t status = H5Dread(datasetId, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, int_vector.data());
             if (status < 0) {
                 return;
             }
@@ -366,9 +378,9 @@ void H5adLoader::LoadFile(QString fileName)
 
             mv::Dataset<Clusters> clustersData = mv::data().createDataset<Clusters>("Cluster", QString::fromStdString(replaceAfterLastSlash(dataset.GetName(), "")), X);
 
-            for (int i = 0; i < string_vector.size(); i++)
+            for (int i = 0; i < qStringData.size(); i++)
             {
-                const QString& clusterName = string_vector[i];
+                const QString& clusterName = qStringData[i];
 
                 Cluster cluster;
                 std::vector<unsigned int> indices;
