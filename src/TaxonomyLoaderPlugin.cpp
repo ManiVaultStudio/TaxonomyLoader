@@ -25,6 +25,19 @@ namespace
         return QString::fromStdString(element.get<std::string>());
     }
 
+    QStringList jsonToStringList(const json& element)
+    {
+        std::vector<std::string> stdVector = element.get<std::vector<std::string>>();
+
+        QStringList stringList;
+        for (const auto& str : stdVector)
+        {
+            stringList.push_back(QString::fromStdString(str));
+        }
+
+        return stringList;
+    }
+
     QMap<QString, QString> jsonToMap(const json& element)
     {
         std::map<std::string, std::string> stdMap = element.get<std::map<std::string, std::string>>();
@@ -59,9 +72,13 @@ namespace
         if (contains(element, "cell_ontology_term_id")) annotation.cell_ontology_term_id = jsonToString(element["cell_ontology_term_id"]);
         if (contains(element, "cell_ontology_term")) annotation.cell_ontology_term = jsonToString(element["cell_ontology_term"]);
         if (contains(element, "rationale")) annotation.rationale = jsonToString(element["rationale"]);
+        if (contains(element, "rationale_dois")) annotation.rationale_dois = jsonToStringList(element["rationale_dois"]);
+        if (contains(element, "marker_gene_evidence")) annotation.marker_gene_evidence = jsonToStringList(element["marker_gene_evidence"]);
+        if (contains(element, "synonyms")) annotation.synonyms = jsonToStringList(element["synonyms"]);
         if (contains(element, "cell_set_accession")) annotation.cell_set_accession = jsonToString(element["cell_set_accession"]);
         if (contains(element, "parent_cell_set_accession")) annotation.parent_cell_set_accession = jsonToString(element["parent_cell_set_accession"]);
         if (contains(element, "author_annotation_fields")) annotation.author_annotation_fields = jsonToMap(element["author_annotation_fields"]);
+        if (contains(element, "negative_marker_gene_evidence")) annotation.negative_marker_gene_evidence = jsonToStringList(element["negative_marker_gene_evidence"]);
 
         if (contains(element, "cell_ids"))
         {
