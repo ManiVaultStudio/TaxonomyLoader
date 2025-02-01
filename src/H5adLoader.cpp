@@ -128,7 +128,9 @@ void csr_to_dense_1d(const std::vector<float>& data,
     //std::cout << std::vector<float>::max_size() << std::endl;
     // Initialize the 1D dense matrix with zeros (size: num_rows * num_cols)
     std::cout << dense_matrix_1d.max_size() << std::endl;
+
     dense_matrix_1d.resize(num_rows * num_cols, 0);
+    
     std::cout << "Dense matrix rows / cols: " << num_rows << " " << num_cols << std::endl;
     std::cout << "Dense matrix wanted size: " << num_rows * num_cols << std::endl;
     std::cout << "Dense matrix size: " << dense_matrix_1d.size() << std::endl;
@@ -218,23 +220,40 @@ void H5adLoader::LoadX()
             hssize_t num_elements2 = H5Sget_simple_extent_npoints(dataspace_id2);
 
             std::vector<int> indices(num_elements1);
+            std::vector<size_t> bigIndices(num_elements1);
             status = H5Dread(XIndicesDatasetId, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, indices.data());
             if (status < 0) {
                 throw "Failed to read X indices dataset";
             }
 
+            std::transform(indices.begin(), indices.end(), bigIndices.begin(), [](int val) { return static_cast<size_t>(val); });
+            indices.clear();
+
             std::vector<int> indptr(num_elements2);
+            std::vector<size_t> bigIndPtr(num_elements2);
+
             status = H5Dread(XIndptrDatasetId, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, indptr.data());
             if (status < 0) {
                 throw "Failed to read X indptr dataset";
             }
+
+            std::transform(indptr.begin(), indptr.end(), bigIndPtr.begin(), [](int val) { return static_cast<size_t>(val); });
+            indptr.clear();
+
             std::cout << "Post read4: " << num_elements2 << std::endl;
+
             X = mv::data().createDataset<Points>("Points", QString::fromStdString("X"));
 
-            std::vector<float> denseMatrix;
-            csr_to_dense_1d(data, indices, indptr, denseMatrix, shape[0], shape[1]);
+            Points::Experimental::setSparseData(X.get(), shape[0], shape[1], bigIndPtr, bigIndices, data);
+            //std::vector<float> denseMatrix(shape[0], shape[1]);
+            //csr_to_dense_1d(data, indices, indptr, denseMatrix, shape[0], shape[1]);
 
-            X->setData(std::move(denseMatrix), shape[1]);
+            //X->setData(std::move(denseMatrix), shape[1]);
+
+            //std::vector<float> denseMatrix(shape[0], 0);
+            //csr_to_dense_1d(data, indices, indptr, denseMatrix, shape[0], shape[1]);
+
+            //X->setData(std::move(denseMatrix), 1); //shape[1]
 
             mv::events().notifyDatasetDataChanged(X);
         }
@@ -380,7 +399,7 @@ void H5adLoader::LoadFile(QString fileName)
 
             for (int i = 0; i < qStringData.size(); i++)
             {
-                const QString& clusterName = qStringData[i];
+                QString& clusterName = qStringData[i];
 
                 Cluster cluster;
                 std::vector<unsigned int> indices;
@@ -389,6 +408,8 @@ void H5adLoader::LoadFile(QString fileName)
                     if (int_vector[c] == i)
                         indices.push_back(c);
                 }
+                if (clusterName.isNull() || clusterName.isEmpty())
+                    clusterName = QString("");
                 cluster.setName(clusterName);
                 cluster.setIndices(indices);
                 
